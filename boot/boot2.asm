@@ -16,7 +16,6 @@ second_stage_start:
 
     jmp CODE_SEG:protected_mode_start
 
-
 print_string_16:
     mov ah, 0x0E
     mov bh, 0x00
@@ -36,7 +35,6 @@ enable_a20:
     out 0x92, al
     ret
 
-
 [BITS 32]
 protected_mode_start:
     MOV ax,  DATA_SEG
@@ -52,13 +50,41 @@ protected_mode_start:
     mov esi, protected_msg
     call print_string_32
 
-    ;call 0x2000 ;kernel entry point
-
-    mov esi, success_msg2
+    mov esi, kernel_check_msg
     call print_string_32
+    
+    ; Check first few bytes at 0x2000
+    mov eax, [0x2000]
+    cmp eax, 0
+    jne kernel_found
+    
+    ; Kernel not found!
+    mov esi, kernel_missing_msg
+    call print_string_32
+    jmp halt_system
+
+kernel_found:
+    mov esi, kernel_found_msg
+    call print_string_32
+    
+    ; Add a small delay before jumping
+    mov ecx, 0x1000000
+delay_loop:
+    nop
+    loop delay_loop
+    
+    mov esi, jumping_msg
+    call print_string_32
+
+    call 0x2000 ;kernel entry point
+
+    mov esi, kernel_returned_msg
+    call print_string_32
+
+halt_system:
     cli 
     hlt
-
+    jmp halt_system
 
 print_string_32:
     pusha
@@ -96,20 +122,19 @@ gdt_data:      ;data segment
     db 0x0
 gdt_end:
 
-
-
-
 gdt_descriptor:
     dw gdt_end - gdt_start - 1
     dd gdt_start
 
-stage2_msg      db 'Second stage loaded!', 13, 10, 0
-protected_msg   db 'Entered 32-bit protected mode!', 13, 10, 0
-success_msg2 db 'Bootloader complete! Ready for kernel.', 13, 10, 0
-
+stage2_msg          db 'Second stage loaded!', 13, 10, 0
+protected_msg       db 'Entered 32-bit protected mode!', 0
+kernel_check_msg    db 'Checking kernel at 0x2000...', 0
+kernel_missing_msg  db 'ERROR: No kernel found at 0x2000!', 0
+kernel_found_msg    db 'Kernel found! ', 0
+jumping_msg         db 'Jumping to kernel...', 0
+kernel_returned_msg db 'ERROR: Kernel returned unexpectedly!', 0
 
 CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 times 2048-($-$$) db 0
-
