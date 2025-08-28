@@ -1,1 +1,17 @@
 .idea
+# Object files
+*.o
+*.obj
+
+# Compiled binaries / images
+*.bin
+*.elf
+*.iso
+
+# Build folders
+build/
+cmake-build-debug/
+
+# Temporary files
+*.log
+*.tmp
