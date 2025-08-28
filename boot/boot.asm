@@ -1,4 +1,3 @@
-
 ;FOR LEGACY BOOT SYSTEMS ONLY
 
 [BITS 16]
@@ -35,6 +34,7 @@ start:
     call print_string
 
     call load_second_stage ;call second stage
+    call load_kernel       ;load kernel too!
 
     mov si, load_error_msg
     call print_string
@@ -42,7 +42,7 @@ start:
 
 delay_short:
     push cx
-    mov cx, 0x1000      
+    mov cx, 0x5000      ; Increased delay to see messages
 .delay_loop:
     nop
     nop
@@ -57,16 +57,17 @@ load_second_stage:
 
     mov ah, 0x00
     mov dl, 0x80
-    int 0x13  ; 0x13 calls bios disk services
+    int 0x13  ; Reset disk
     jc .disk_error
 
+    ; Load second stage (sectors 2-5 to 0x1000)
     mov ah, 0x02
-    mov al, 4
-    mov ch, 0x00
-    mov cl, 0x02
-    mov dh, 0x00
-    mov dl, 0x80
-    mov bx, 0x1000 ;load to 0x1000:0
+    mov al, 4          ; Load 4 sectors 
+    mov ch, 0x00       ; Cylinder 0
+    mov cl, 0x02       ; Start from sector 2
+    mov dh, 0x00       ; Head 0
+    mov dl, 0x80       ; Drive 0x80 (first hard disk)
+    mov bx, 0x1000     ; Load to 0x1000:0
     int 0x13
     jc .disk_error
 
@@ -75,8 +76,9 @@ load_second_stage:
 
     mov si, success_msg2
     call print_string
+    call delay_short
 
-    jmp 0x1000
+    ret    ; Return instead of jumping - we need to load kernel too
     
 .disk_error:
     mov si, disk_error_msg
@@ -85,6 +87,42 @@ load_second_stage:
 
 .load_error:
     mov si, verify_error_msg
+    call print_string
+    jmp hang
+
+;<---------------loading kernel from disk------------------------->
+load_kernel:
+    mov si, loading_kernel_msg
+    call print_string
+
+    ; Load kernel (sectors 6-15 to 0x2000) 
+    mov ah, 0x02
+    mov al, 10         ; Load 10 sectors 
+    mov ch, 0x00       ; Cylinder 0
+    mov cl, 0x06       ; Start from sector 6 (after boot + stage2)
+    mov dh, 0x00       ; Head 0
+    mov dl, 0x80       ; Drive 0x80
+    mov bx, 0x2000     ; Load to 0x2000:0
+    int 0x13
+    jc .kernel_disk_error
+
+    cmp word [0x2000], 0
+    je .kernel_load_error
+
+    mov si, kernel_success_msg
+    call print_string
+    call delay_short
+
+    ; Now jump to second stage
+    jmp 0x1000
+    
+.kernel_disk_error:
+    mov si, kernel_disk_error_msg
+    call print_string
+    jmp hang
+
+.kernel_load_error:
+    mov si, kernel_verify_error_msg
     call print_string
     jmp hang
 
@@ -104,19 +142,17 @@ print_string:
 hang:
     hlt
     jmp hang
-    
 
-
-
-
-boot_msg db 'MOS Bootloader Starting...', 13, 10, 0
-verify_error_msg db 'Second stage verification failed!', 13, 10, 0
-load_error_msg db "MOS bootloader v1.0", 13,10,0
-loading_msg     db 'Loading second stage...', 13, 10, 0
-disk_error_msg  db 'Disk read error!', 13, 10, 0
-success_msg2     db 'Second stage loaded! Jumping...', 13, 10, 0
+boot_msg                db 'MOS Bootloader Starting...', 13, 10, 0
+verify_error_msg        db 'Second stage verification failed!', 13, 10, 0
+load_error_msg          db "MOS bootloader v1.0", 13,10,0
+loading_msg             db 'Loading second stage...', 13, 10, 0
+disk_error_msg          db 'Disk read error!', 13, 10, 0
+success_msg2            db 'Second stage loaded!', 13, 10, 0
+loading_kernel_msg      db 'Loading kernel...', 13, 10, 0
+kernel_success_msg      db 'Kernel loaded successfully!', 13, 10, 0
+kernel_disk_error_msg   db 'Kernel disk read error!', 13, 10, 0
+kernel_verify_error_msg db 'Kernel verification failed!', 13, 10, 0
 
 times 510-($-$$) db 0
 dw 0xAA55
-
-
