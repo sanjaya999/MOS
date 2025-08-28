@@ -35,19 +35,15 @@ fi
 
 echo -e "${GREEN}Both stages built successfully${NC}"
 
-# Create complete disk image
 echo -e "${YELLOW}Creating disk image...${NC}"
 dd if=/dev/zero of=disk.img bs=512 count=20 2>/dev/null
 
-# Write first stage (bootloader) to sector 1
 dd if=boot.bin of=disk.img bs=512 count=1 conv=notrunc 2>/dev/null
 
-# Write second stage to sectors 2-5 (where your bootloader expects it)  
 dd if=boot2.bin of=disk.img bs=512 seek=1 count=4 conv=notrunc 2>/dev/null
 
 echo -e "${GREEN}Complete bootloader created: disk.img${NC}"
 
-# Check file sizes
 boot1_size=$(stat -c%s "boot.bin" 2>/dev/null || stat -f%z "boot.bin" 2>/dev/null)
 boot2_size=$(stat -c%s "boot2.bin" 2>/dev/null || stat -f%z "boot2.bin" 2>/dev/null)
 
@@ -61,5 +57,4 @@ fi
 echo -e "${YELLOW}Testing in QEMU...${NC}"
 echo "Press Ctrl+Alt+G to release mouse, Ctrl+Alt+Q to quit"
 
-# Use disk image instead of just boot.bin
 qemu-system-i386 -hda disk.img
