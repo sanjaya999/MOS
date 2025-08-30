@@ -11,4 +11,8 @@
 #define GREEN_ON_BLACK 0x0A
 #define RED_ON_BLACK   0x0C
 
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+
 #endif
