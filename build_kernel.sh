@@ -16,6 +16,7 @@ if [ ! -f "boot/boot.asm" ]; then
     exit 1
 fi
 
+
 if [ ! -f "boot/boot2.asm" ]; then
     echo -e "${RED}Error: boot/boot2.asm not found!${NC}"
     exit 1
